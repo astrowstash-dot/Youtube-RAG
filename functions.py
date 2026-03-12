@@ -14,7 +14,17 @@ from langchain_core.prompts import PromptTemplate
 
 load_dotenv()
 
+def extract_vid_id(url):
 
+    """To extract video id from Youtube URL"""
+
+    pattern = r"(?:v=|/)([A-Za-z0-9_-]{11})"   # either v= or / but (?:) dont capture the group
+    match_obj = re.search(pattern,url)
+
+    if match_obj:
+        return match_obj.group(1)
+    st.error("Invalid Youtube URL. Please enter a valid URL")
+    return None
 
 
 
