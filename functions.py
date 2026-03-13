@@ -34,7 +34,7 @@ def get_transcript(video_id,language):
     try:
         transcript = YT_api.fetch(video_id,language[language])
         full_transcript = " ".join([i.text for i in transcript])
-        time.sleep(10)
+        time.sleep(8)
         return full_transcript
     except Exception as e:
         st.error(f'Error fetching video transcript {e}')
@@ -124,5 +124,17 @@ def get_notes(transcript):
     except Exception as e:
         st.error ("Fetching notes failed: {e}")
 
+# **chunk to rag **
+
+# function to create chunks
+def create_chunks(transcript):
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap= 1000)
+    docs = text_splitter.create_documents([transcript])
+    return docs
 
 
+# function to create embedding and store it into an vector space.
+
+def create_vector_store(transcript):
+    embedding = GoogleGenerativeAIEmbeddings(model="gemini-embedding-001")  
+    embedding.embed_query(transcript)
