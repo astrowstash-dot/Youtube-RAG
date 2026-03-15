@@ -1,5 +1,5 @@
 import time 
-
+import os
 from dotenv import load_dotenv
 import re
 import streamlit as st
@@ -10,9 +10,15 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_chroma import Chroma
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate   # to pass a prompt template to the gen model
 
 load_dotenv()
+
+api_key = os.getenv("GOOGLE_API_KEY")
+
+if not api_key:
+    raise ValueError("API key not found.")
+
 
 def extract_vid_id(url):
 
@@ -28,13 +34,13 @@ def extract_vid_id(url):
 
 
 # function to get transcript of the video
-def get_transcript(video_id,language):
+def get_transcript(video_id,languages):
     YT_api = YouTubeTranscriptApi()
 
     try:
-        transcript = YT_api.fetch(video_id,language[language])
+        transcript = YT_api.fetch(video_id,languages=[languages])
         full_transcript = " ".join([i.text for i in transcript])
-        time.sleep(8)
+        time.sleep(10)
         return full_transcript
     except Exception as e:
         st.error(f'Error fetching video transcript {e}')
@@ -42,7 +48,7 @@ def get_transcript(video_id,language):
 # initialize the gemini model 
 
 llm = ChatGoogleGenerativeAI(
-    model = "gemini-2.5-flash-lite",
+    model = "gemini-3-flash-preview",
     temperature = 0.2     
 )
 
@@ -51,7 +57,7 @@ llm = ChatGoogleGenerativeAI(
 def translate_transcript(transcript):
 
     try:
-        Prompt = ChatPromptTemplate().from_template("""
+        Prompt = ChatPromptTemplate.from_template("""
         You are an expert translator with deep cultural and linguistic knowledge.
         I will provide you with a transcript. Your task is to translate it into English with absolute accuracy, preserving:
         - Full meaning and context (no omissions, no additions).
@@ -60,9 +66,9 @@ def translate_transcript(transcript):
         - Speaker’s voice (same perspective, no rewriting into third-person).
         Do not summarize or simplify. The translation should read naturally in the target language but stay as close as possible to the original intent.
         
-        transcript : {transcript} """)
+        transcript : {transcript} """)  # passed the transcript here
 
-        chain = Prompt|llm
+        chain = Prompt|llm      # connected the prompt to the llm
 
         # Run chain
         result = chain.invoke({"transcript":transcript})
@@ -103,7 +109,7 @@ def get_important_topics(transcript):
 # functions to generate notes from video
 def get_notes(transcript):
     try:
-        prompt = ChatPromptTemplate().from_template("""
+        prompt = ChatPromptTemplate.from_template("""
             You are an AI note-taker. Your task is to read the following YouTube video transcript 
                 and produce well-structured, concise notes.
 
@@ -121,20 +127,11 @@ def get_notes(transcript):
         chain = prompt | llm
         result = chain.invoke({"transcript":transcript})
 
+        return result.content
+
     except Exception as e:
         st.error ("Fetching notes failed: {e}")
 
 # **chunk to rag **
 
 # function to create chunks
-def create_chunks(transcript):
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap= 1000)
-    docs = text_splitter.create_documents([transcript])
-    return docs
-
-
-# function to create embedding and store it into an vector space.
-
-def create_vector_store(transcript):
-    embedding = GoogleGenerativeAIEmbeddings(model="gemini-embedding-001")  
-    embedding.embed_query(transcript)

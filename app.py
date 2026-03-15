@@ -21,7 +21,7 @@ st.markdown("Homie can transform Youtube videos into key Topics, generate notes 
 youtube_url = st.text_input(":material/youtube: :material/url:",
             placeholder= "https://www.youtube.com/watch?v=")
 
-language = st.selectbox("**Select a language**:",
+languages = st.selectbox("**Select a language**:",
             placeholder="en",
             options= ["en", "hi", "sa", "ml", "te", "mr", "or"])
 
@@ -38,28 +38,29 @@ if button:
 # flow---------
 
 if button:
-    if youtube_url and language:
+    if youtube_url and languages:
         video_id = extract_vid_id(youtube_url)
         if video_id:
             with st.spinner("step 1/3: fetching transcript..."):
-               transcript = get_transcript(video_id,language)
+               transcript = get_transcript(video_id,languages)
 
-            if language!="en":
+            if languages!="en":
                 with spinner("step 1.5/3: translating transcript into English, This may take a few moments...."):
-                   trans_transcript = translate_transcript(transcript)
+                   transcript = translate_transcript(transcript)
 
             if selection == "Notes📝":
                 with st.spinner("step 2/3: Extracting important topics..."):
                    topics = get_important_topics(transcript)
-                st.write (topics)
-                st.markdown("----")
+                   st.write (topics)
+                   st.markdown("----")
 
                 with st.spinner("step 3/3: generating notes...."):
                    notes = get_notes(transcript)
 
                 # addd the loding bar -----------------
-                st.write (notes)
-                st.markdown("-----")
+                   st.write (notes)
+                   st.markdown("-----")
+                st.success("Summary and Notes Generated.")
             
          #   if selection == "Chat💬":
 
