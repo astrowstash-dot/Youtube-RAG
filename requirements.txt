@@ -13,5 +13,4 @@ gtts
 sentence-transformers
 pypdf
 rapidocr-onnxruntime
-pysqlite3-binary
 requests
