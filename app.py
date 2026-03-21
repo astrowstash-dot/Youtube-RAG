@@ -7,7 +7,10 @@ from functions import (
     get_transcript,
     translate_transcript,
     get_important_topics,
-    get_notes
+    get_notes,
+    create_chunks,
+    create_vector_store,
+    rag_answer
 )
 
 # sidebar inputs 
@@ -23,7 +26,7 @@ youtube_url = st.text_input(":material/youtube: :material/url:",
 
 languages = st.selectbox("**Select a language**:",
             placeholder="en",
-            options= ["en", "hi", "sa", "ml", "te", "mr", "or"])
+            options= ["en", "hi", "sa", "ml", "te", "mr", "or","ar"])
 
 selection = st.radio ("what you would like HomieAI to do ?",
            options=["Notes📝", "Chat💬"],
@@ -62,7 +65,41 @@ if button:
                    st.markdown("-----")
                 st.success("Summary and Notes Generated.")
             
-         #   if selection == "Chat💬":
+            if selection == "Chat💬":
+                
+               with st.spinner("2/3: creating chunks and vector_store..... "):
+                   
+                   chunks = create_chunks(transcript)
+                   vectorstore = create_vector_store(chunks)
+                   st.session_state.vector_store = vectorstore
+               st.session_state.messages = []
+               st.success("Video is ready for chat....")
+
+
+# chatbot session 
+if selection == "Chat💬" and "vector_store" in st.session_state:
+    st.divider()
+    st.subheader("Chat with video")
+
+   # displaying entire history
+    for message in st.session_state.get("messages", []):
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
+    
+    # user input 
+    prompt = st.chat_input("Ask me anything about the video.")
+    if prompt:
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.write(prompt)
+
+        with st.chat_message("assistant"):
+           response = rag_answer(prompt, st.session_state.vector_store)
+           st.write(response)
+        st.session_state.messages.append({"role": "assistant", "content": response})
+
+                
+
 
 
 
