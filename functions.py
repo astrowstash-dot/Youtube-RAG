@@ -48,7 +48,7 @@ def get_transcript(video_id,languages):
 # initialize the gemini model 
 
 llm = ChatGoogleGenerativeAI(
-    model = "gemini-3-flash-preview",
+    model = "gemini-2.5-flash",
     temperature = 0.2     
 )
 
@@ -132,6 +132,50 @@ def get_notes(transcript):
     except Exception as e:
         st.error ("Fetching notes failed: {e}")
 
+
+
 # **chunk to rag **
 
 # function to create chunks
+
+def create_chunks(full_transcript):
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000,chunk_overlap = 1000)
+    doc = text_splitter.create_documents([full_transcript])
+    return doc
+
+# function to create embedding and store it in vectorspace
+
+def create_vector_store(docs):
+    embedding = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001", transport = "grpc")
+    vector_store = Chroma.from_documents(docs, embedding)
+    return vector_store
+
+# rag function
+
+def rag_answer(question, vectorstore):
+    results = vectorstore.similarity_search(question, k=4)
+    context_text = "\n".join([i.page_content for i in results]) 
+
+    prompt = ChatPromptTemplate.from_template("""
+                You are a kind, polite, and precise assistant.
+                - Begin with a warm and respectful greeting (avoid repeating greetings every turn).
+                - Understand the user’s intent even with typos or grammatical mistakes.
+                - Answer ONLY using the retrieved context.
+                - If answer not in context, say:
+                  "I couldn’t find that information in the database. Could you please rephrase or ask something else?"
+                - Keep answers clear, concise, and friendly.
+
+                Context:
+                {context}
+
+                User Question:
+                {question}
+
+                Answer:
+                """)
+    
+    #chain 
+    chain = prompt|llm
+    response = chain.invoke({"context":context_text, "question":question})
+    return response.content
+    
